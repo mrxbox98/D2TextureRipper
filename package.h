@@ -12,6 +12,7 @@
 #include <bcrypt.h>
 #include <set>
 #include "helpers.h"
+#include <regex>
 
 struct PkgHeader
 {

@@ -33,11 +33,18 @@ std::string Package::getLatestPatchIDPath(std::string packageID)
 		fullPath = entry.path().u8string();
 		if (fullPath.find(packageID) != std::string::npos)
 		{
-			patchID = std::stoi(fullPath.substr(fullPath.size() - 5, 1));
-			if (patchID > largestPatchID) largestPatchID = patchID;
-			std::replace(fullPath.begin(), fullPath.end(), '\\', '/');
-			packageName = fullPath.substr(0, fullPath.size() - 6);
-			packageName = packageName.substr(packageName.find_last_of('/'));
+			std::smatch match;
+			std::regex patchRegex(R"(_(\d+)\.pkg)");
+
+			if (std::regex_search(fullPath, match, patchRegex)) {
+
+				patchID = std::stoi(match[1]);
+				if (patchID > largestPatchID) largestPatchID = patchID;
+				std::replace(fullPath.begin(), fullPath.end(), '\\', '/');
+
+				packageName = fullPath.substr(0, fullPath.find_last_of("_"));
+				packageName = packageName.substr(packageName.find_last_of('/'));
+			}
 		}
 	}
 	// Some strings are not covered, such as the bootstrap set so we need to do pkg checks
@@ -442,7 +449,10 @@ unsigned char* Package::getBufferFromEntry(Entry entry)
 	int currentBlockID = 0;
 	for (const Block& currentBlock : blocks) // & here is good as it captures by const reference, cheaper than by value
 	{
-		packagePath[packagePath.size() - 5] = currentBlock.patchID + 48;
+		std::regex patchRegex(R"(_(\d+)\.pkg)");
+
+		packagePath = std::regex_replace(packagePath, patchRegex, "_" + std::to_string(currentBlock.patchID) + ".pkg");
+
 		FILE* pFile;
 		pFile = _fsopen(packagePath.c_str(), "rb", _SH_DENYNO);
 		fseek(pFile, currentBlock.offset, SEEK_SET);
